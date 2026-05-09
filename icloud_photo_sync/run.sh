@@ -19,6 +19,8 @@ json_get() {
 }
 
 APPLE_ID="$(json_get '.apple_id')"
+APPLE_PASSWORD="$(json_get '.apple_password // ""')"
+MFA_CODE="$(json_get '.mfa_code // ""')"
 TIMEZONE="$(json_get '.timezone')"
 DOWNLOAD_PATH="$(json_get '.download_path')"
 DOWNLOAD_INTERVAL="$(json_get '.download_interval')"
@@ -55,6 +57,9 @@ ALIGN_RAW="as-is"
 SINGLE_PASS="false"
 SKIP_CHECK="false"
 LIVE_PHOTO_SIZE="original"
+KEYRING_FILE="${CONFIG_DIR}/python_keyring/keyring_pass.cfg"
+COOKIE_FILE="$(printf '%s' "${APPLE_ID}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')"
+COOKIE_PATH="${CONFIG_DIR}/${COOKIE_FILE}"
 
 if [ -z "${APPLE_ID}" ] || [ "${APPLE_ID}" = "null" ]; then
   echo "apple_id is required in the add-on options." >&2
@@ -123,6 +128,105 @@ append_if_set "photo_album" "${PHOTO_ALBUM}"
 append_if_set "photo_library" "${PHOTO_LIBRARY}"
 append_if_set "skip_album" "${SKIP_ALBUM}"
 append_if_set "skip_library" "${SKIP_LIBRARY}"
+
+has_keyring() {
+  [ -f "${KEYRING_FILE}" ] && grep -q '=' "${KEYRING_FILE}"
+}
+
+has_mfa_cookie() {
+  [ -f "${COOKIE_PATH}" ] && grep -q 'X-APPLE-WEBAUTH-USER' "${COOKIE_PATH}"
+}
+
+auth_ready() {
+  has_keyring && has_mfa_cookie
+}
+
+run_option_based_auth() {
+  if auth_ready; then
+    if [ -n "${APPLE_PASSWORD}" ] || [ -n "${MFA_CODE}" ]; then
+      echo "Apple authentication is already ready. Clear apple_password and mfa_code from the add-on options after this start."
+    fi
+    return 0
+  fi
+
+  if [ -z "${MFA_CODE}" ] || [ "${MFA_CODE}" = "null" ]; then
+    echo "Apple authentication is not ready yet."
+    echo "Set mfa_code in the add-on options, save, then start or restart the add-on."
+    echo "After the log says authentication succeeded, clear apple_password and mfa_code from the options."
+    return 1
+  fi
+
+  if ! has_keyring && { [ -z "${APPLE_PASSWORD}" ] || [ "${APPLE_PASSWORD}" = "null" ]; }; then
+    echo "Apple authentication needs apple_password because the keyring is not initialized yet."
+    echo "Set apple_password and mfa_code in the add-on options, save, then start or restart the add-on."
+    return 1
+  fi
+
+  if ! command -v expect >/dev/null 2>&1; then
+    echo "Apple authentication needs expect, but expect is not installed in this image." >&2
+    return 1
+  fi
+
+  echo "Starting Apple authentication from add-on options for ${APPLE_ID}."
+  echo "Apple may ask your trusted devices to approve this sign-in; if the code expires, enter a fresh code and restart the add-on."
+
+  export HA_ICLOUD_SETUP_PASSWORD="${APPLE_PASSWORD}"
+  export HA_ICLOUD_SETUP_MFA_CODE="${MFA_CODE}"
+
+  if expect <<'EOF'
+set timeout 600
+set stty_init -echo
+
+proc send_secret {value} {
+  send -- "$value\r"
+}
+
+spawn /usr/local/bin/sync-icloud.sh --Initialise
+
+expect {
+  -nocase -re {(enter )?icloud password[^:]*:} {
+    send_secret $env(HA_ICLOUD_SETUP_PASSWORD)
+    exp_continue
+  }
+  -nocase -re {save password.*:} {
+    send -- "y\r"
+    exp_continue
+  }
+  -nocase -re {which device.*:} {
+    send -- "\r"
+    exp_continue
+  }
+  -nocase -re {please choose an option.*:} {
+    send -- "1\r"
+    exp_continue
+  }
+  -nocase -re {(validation|verification|authentication|two-factor).*code.*:} {
+    send_secret $env(HA_ICLOUD_SETUP_MFA_CODE)
+    exp_continue
+  }
+  eof {
+    catch wait result
+    exit [lindex $result 3]
+  }
+  timeout {
+    exit 124
+  }
+}
+EOF
+  then
+    unset HA_ICLOUD_SETUP_PASSWORD HA_ICLOUD_SETUP_MFA_CODE
+    if auth_ready; then
+      echo "Apple authentication succeeded. Clear apple_password and mfa_code from the add-on options, then keep the add-on running normally."
+      return 0
+    fi
+    echo "Apple authentication command finished, but the keyring or MFA cookie was not found." >&2
+    return 1
+  fi
+
+  unset HA_ICLOUD_SETUP_PASSWORD HA_ICLOUD_SETUP_MFA_CODE
+  echo "Apple authentication failed. Enter a fresh mfa_code in the add-on options and restart the add-on." >&2
+  return 1
+}
 
 cleanup_empty_jpeg_placeholders() {
   if [ "${CONVERT_HEIC_TO_JPEG}" != "true" ]; then
@@ -253,7 +357,8 @@ echo "Prepared ${CONFIG_FILE} for ${APPLE_ID}"
 echo "Download destination: ${DOWNLOAD_PATH}"
 echo "Runtime user/group: ${LOCAL_USER}:${LOCAL_GROUP}"
 echo "Temporary work dir: ${TMP_DIR}"
-echo "If this is the first run, initialise the keyring and MFA cookie from the SSH add-on terminal."
+
+run_option_based_auth || true
 
 trap 'exit 0' TERM INT
 
@@ -264,10 +369,15 @@ while true; do
   chown -R "${LOCAL_USER}:${LOCAL_GROUP}" "${CONFIG_DIR}" "${DOWNLOAD_PATH}" "${STATE_TMP_ROOT}" >/dev/null 2>&1 || true
   chmod 700 "${TMP_DIR}" >/dev/null 2>&1 || true
 
-  /usr/local/bin/sync-icloud.sh || true
-  cleanup_empty_jpeg_placeholders
-  cleanup_converted_heic_originals
-  downscale_display_images
+  if auth_ready; then
+    /usr/local/bin/sync-icloud.sh || true
+    cleanup_empty_jpeg_placeholders
+    cleanup_converted_heic_originals
+    downscale_display_images
+  else
+    echo "Skipping sync until Apple authentication is ready."
+    echo "Set mfa_code in the add-on options, plus apple_password if the keyring is not initialized, then restart the add-on."
+  fi
 
   echo "Sleeping ${DOWNLOAD_INTERVAL}s until next sync"
   sleep "${DOWNLOAD_INTERVAL}" &

@@ -16,11 +16,12 @@ This add-on wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk
 
 4. Install `iCloud Photo Sync`.
 5. Open the add-on options and set at least `apple_id`, `photo_album`, and `download_path`.
-6. Start the add-on once so the container exists.
-7. Complete the interactive Apple authentication from an HAOS terminal.
-8. Restart the add-on and confirm the log shows a successful sync.
-9. Open Home Assistant Media Browser and verify `/media/icloud_photos` contains the synced album.
-10. Point a dashboard media card at `media-source://media_source/local/icloud_photos`.
+6. Temporarily enter `apple_password` and the current six-digit Apple code in `mfa_code`.
+7. Start the add-on and confirm the log says `Apple authentication succeeded`.
+8. Clear `apple_password` and `mfa_code` from the add-on options.
+9. Confirm the log shows a successful sync.
+10. Open Home Assistant Media Browser and verify `/media/icloud_photos` contains the synced album.
+11. Point a dashboard media card at `media-source://media_source/local/icloud_photos`.
 
 This is a Home Assistant add-on repository, not a HACS package.
 
@@ -30,6 +31,8 @@ Typical still-photo display:
 
 ```yaml
 apple_id: "your-apple-id@example.com"
+apple_password: ""
+mfa_code: ""
 timezone: "Europe/Zurich"
 download_path: "/media/icloud_photos"
 download_interval: 86400
@@ -57,6 +60,8 @@ Live Photo display with companion videos available:
 
 ```yaml
 apple_id: "your-apple-id@example.com"
+apple_password: ""
+mfa_code: ""
 download_path: "/media/icloud_photos"
 photo_album: "Favorites"
 convert_heic_to_jpeg: true
@@ -73,28 +78,23 @@ recent_only: 200
 Credential handling:
 
 - Put the Apple ID in the add-on config.
-- Do not commit or paste Apple passwords into Home Assistant config, GitHub issues, or chat.
-- Enter the Apple password only during the interactive initialise step below.
+- Put the Apple password and six-digit Apple code in `apple_password` and `mfa_code` only while authenticating.
+- Clear `apple_password` and `mfa_code` after the log says authentication succeeded.
+- Do not commit or paste Apple passwords into GitHub issues or chat.
 
-## First-Time Initialise
+## First-Time Apple Authentication
 
-The upstream container stores the Apple password in its own keyring and creates the MFA cookie interactively. Use the installed `Advanced SSH & Web Terminal` add-on for this one-time step.
+The upstream container stores the Apple password in its own keyring and creates the MFA cookie. This add-on feeds the first-time prompts from temporary Home Assistant add-on options so you do not need an HAOS terminal.
 
-From the SSH add-on terminal on HAOS:
+Setup flow:
 
-```sh
-docker ps --format '{{.Names}}' | grep icloud_photo_sync
-docker exec -it <container_name> sync-icloud.sh --Initialise
-```
+1. Enter `apple_id`, `apple_password`, and `mfa_code` in the add-on options.
+2. Start or restart the add-on.
+3. Approve the Apple sign-in request on your trusted device when prompted.
+4. Watch the add-on log for `Apple authentication succeeded`.
+5. Clear `apple_password` and `mfa_code` from the add-on options.
 
-Use the container name returned by the first command.
-
-What to expect:
-
-- It will prompt for the Apple password.
-- It will ask whether to save the password in the keyring.
-- Apple will send or display a 2FA code.
-- After success, the cookie is stored under the add-on `/config` volume and normal sync can proceed.
+If Apple asks for a new code or the code expires, enter a fresh `mfa_code` and restart the add-on. The setup fields are not written to `icloudpd.conf`; normal syncs use the keyring and cookie under the add-on `/config` volume.
 
 ## After Authentication
 
@@ -118,12 +118,7 @@ What to expect:
 
 `icloudpd` cookie auth typically needs renewal periodically.
 
-When it expires, run:
-
-```sh
-docker ps --format '{{.Names}}' | grep icloud_photo_sync
-docker exec -it <container_name> reauth.sh
-```
+When it expires, enter a fresh `mfa_code` in the add-on options and restart the add-on. If the Apple password changed or the keyring was removed, also enter `apple_password`. Clear both setup fields again after the log says authentication succeeded.
 
 ## Choosing Which Photos Get Pulled
 

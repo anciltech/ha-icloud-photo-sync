@@ -17,9 +17,9 @@ This wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk/docker
 
 5. Install `iCloud Photo Sync` from the add-on store.
 6. In the add-on options, set your Apple ID, album name, and `download_path: /media/icloud_photos`.
-7. Start the add-on once, then complete the Apple authentication step below from an HAOS terminal.
-8. Restart the add-on and watch the log until the first sync finishes.
-9. Point your dashboard card at `media-source://media_source/local/icloud_photos`.
+7. For first-time Apple authentication, temporarily enter `apple_password` and `mfa_code`, then start the add-on.
+8. When the log says authentication succeeded, clear `apple_password` and `mfa_code` from the options.
+9. Watch the log until the first sync finishes, then point your dashboard card at `media-source://media_source/local/icloud_photos`.
 
 This is a Home Assistant add-on repository, so it is installed through the Add-on Store rather than HACS. HACS is still the right path for frontend cards and some integrations.
 
@@ -80,14 +80,16 @@ https://github.com/anciltech/ha-media-card/tree/feature/icloud-live-photos
 
 Apple authentication is handled by `icloudpd` inside the add-on container. The add-on does not store Apple passwords in this repository.
 
-After installing and starting the add-on once, use the Home Assistant `Advanced SSH & Web Terminal` add-on or another HAOS shell:
+For first setup:
 
-```sh
-docker ps --format '{{.Names}}' | grep icloud_photo_sync
-docker exec -it <container_name> sync-icloud.sh --Initialise
-```
+1. Put your Apple ID in `apple_id`.
+2. Temporarily put your Apple password in `apple_password`.
+3. Approve the sign-in on your Apple device and put the six-digit code in `mfa_code`.
+4. Save the add-on options and start or restart the add-on.
+5. Watch the add-on log for `Apple authentication succeeded`.
+6. Clear `apple_password` and `mfa_code` from the add-on options.
 
-Use the container name returned by the first command. Follow the Apple password and MFA prompts. After the cookie and keyring are created, normal scheduled syncs can run unattended until Apple requires re-authentication.
+The password is used only to initialize the container keyring, and the MFA code is used only to create the Apple auth cookie. Normal scheduled syncs run unattended from that keyring and cookie until Apple requires re-authentication. If the code expires or Apple asks for another code, enter a fresh `mfa_code` and restart the add-on.
 
 ## Verify The First Sync
 

@@ -2,7 +2,7 @@ name: iCloud Photo Sync
 slug: icloud_photo_sync
 description: Sync iCloud Photos into Home Assistant media storage for dashboard playback.
 url: "https://github.com/anciltech/ha-icloud-photo-sync"
-version: "0.1.8"
+version: "0.1.9"
 startup: services
 boot: auto
 init: false
@@ -18,6 +18,8 @@ map:
   - share:rw
 options:
   apple_id: ""
+  apple_password: ""
+  mfa_code: ""
   timezone: "Europe/Zurich"
   download_path: "/media/icloud_photos"
   download_interval: 86400
@@ -41,6 +43,8 @@ options:
   debug_logging: false
 schema:
   apple_id: str
+  apple_password: password
+  mfa_code: password
   timezone: str
   download_path: str
   download_interval: int
