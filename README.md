@@ -34,7 +34,11 @@ The add-on only performs server-side sync. For dashboard playback, point a media
 media-source://media_source/local/icloud_photos
 ```
 
-The AncilTech fork of `ha-media-card` includes an `icloud_photos` preset and Live Photo playback mode that can show the still photo briefly, play the companion video, pause, and repeat.
+The AncilTech fork of `ha-media-card` includes an `icloud_photos` preset and Live Photo playback mode that can show the still photo briefly, play the companion video, pause, and repeat:
+
+```text
+https://github.com/anciltech/ha-media-card/tree/feature/icloud-live-photos
+```
 
 ## First-Time Apple Authentication
 

@@ -131,7 +131,7 @@ Home Assistant exposes `/media/icloud_photos` through Media Source at:
 media-source://media_source/local/icloud_photos
 ```
 
-For the AncilTech `ha-media-card` fork, use:
+For the AncilTech `ha-media-card` fork at `https://github.com/anciltech/ha-media-card/tree/feature/icloud-live-photos`, use:
 
 ```yaml
 type: custom:media-card
