@@ -141,10 +141,10 @@ icloud_photos:
 live_photo:
   enabled: true
   still_duration: 1
-  pause_duration: 10
+  repeat_delay: 10
 ```
 
-With that card behavior, Live Photos are displayed as a still image for about one second, then the companion video plays, then the card waits before repeating.
+With that card behavior, Live Photos keep the still image visible, overlay the companion video after about one second, then wait `repeat_delay` seconds after the clip stops before playing the motion clip again. The Live Photo loop does not advance the slideshow; the card's normal photo timing still controls when the next photo appears.
 
 ## Live Photos
 
