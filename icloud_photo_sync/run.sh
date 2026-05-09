@@ -27,6 +27,10 @@ FOLDER_STRUCTURE="$(json_get '.folder_structure')"
 PHOTO_SIZE="$(json_get '.photo_size | if type == "array" then join(",") else . end')"
 CONVERT_HEIC_TO_JPEG="$(json_get '.convert_heic_to_jpeg')"
 DELETE_HEIC_AFTER_CONVERSION="$(json_get '.delete_heic_after_conversion // true')"
+DOWNSCALE_DISPLAY_IMAGES="$(json_get '.downscale_display_images // false')"
+DISPLAY_MAX_WIDTH="$(json_get '.display_max_width // 1920')"
+DISPLAY_MAX_HEIGHT="$(json_get '.display_max_height // 1080')"
+DISPLAY_JPEG_QUALITY="$(json_get '.display_jpeg_quality // 82')"
 PHOTO_ALBUM="$(json_get '.photo_album')"
 PHOTO_LIBRARY="$(json_get '.photo_library')"
 SKIP_ALBUM="$(json_get '.skip_album')"
@@ -148,6 +152,66 @@ cleanup_converted_heic_originals() {
   ' sh {} +
 }
 
+imagemagick_identify() {
+  if command -v identify >/dev/null 2>&1; then
+    identify "$@"
+  elif command -v magick >/dev/null 2>&1; then
+    magick identify "$@"
+  else
+    return 127
+  fi
+}
+
+imagemagick_convert() {
+  if command -v magick >/dev/null 2>&1; then
+    magick "$@"
+  elif command -v convert >/dev/null 2>&1; then
+    convert "$@"
+  else
+    return 127
+  fi
+}
+
+downscale_display_images() {
+  if [ "${DOWNSCALE_DISPLAY_IMAGES}" != "true" ]; then
+    return
+  fi
+
+  if ! command -v identify >/dev/null 2>&1 && ! command -v magick >/dev/null 2>&1; then
+    echo "Image downscale requested, but ImageMagick is not installed; skipping" >&2
+    return
+  fi
+
+  echo "Downscaling oversized JPEG display images under ${DOWNLOAD_PATH} to fit ${DISPLAY_MAX_WIDTH}x${DISPLAY_MAX_HEIGHT} at quality ${DISPLAY_JPEG_QUALITY}"
+  find "${DOWNLOAD_PATH}" -type f \( -iname '*.jpg' -o -iname '*.jpeg' \) | while IFS= read -r image_path; do
+    dimensions="$(imagemagick_identify -format '%w %h' "${image_path}[0]" 2>/dev/null || true)"
+    if [ -z "${dimensions}" ]; then
+      echo "Skipping unreadable image: ${image_path}" >&2
+      continue
+    fi
+
+    set -- ${dimensions}
+    width="$1"
+    height="$2"
+
+    if [ "${width}" -le "${DISPLAY_MAX_WIDTH}" ] && [ "${height}" -le "${DISPLAY_MAX_HEIGHT}" ]; then
+      continue
+    fi
+
+    tmp_path="${image_path}.display-resize.$$.jpg"
+    if imagemagick_convert "${image_path}[0]" -auto-orient -resize "${DISPLAY_MAX_WIDTH}x${DISPLAY_MAX_HEIGHT}>" -strip -quality "${DISPLAY_JPEG_QUALITY}" "jpg:${tmp_path}"; then
+      touch -r "${image_path}" "${tmp_path}" >/dev/null 2>&1 || true
+      chown "${LOCAL_USER}:${LOCAL_GROUP}" "${tmp_path}" >/dev/null 2>&1 || true
+      chmod 644 "${tmp_path}" >/dev/null 2>&1 || true
+      mv "${tmp_path}" "${image_path}"
+      echo "Downscaled display image: ${image_path} (${width}x${height} -> max ${DISPLAY_MAX_WIDTH}x${DISPLAY_MAX_HEIGHT})"
+    else
+      rm -f "${tmp_path}" >/dev/null 2>&1 || true
+      echo "Failed to downscale image: ${image_path}" >&2
+    fi
+  done
+}
+
 mv "${CONFIG_TMP}" "${CONFIG_FILE}"
 chown "${LOCAL_USER}:${LOCAL_GROUP}" "${CONFIG_FILE}" >/dev/null 2>&1 || true
 chmod 600 "${CONFIG_FILE}" >/dev/null 2>&1 || true
@@ -174,6 +238,7 @@ while true; do
 
   /usr/local/bin/sync-icloud.sh || true
   cleanup_converted_heic_originals
+  downscale_display_images
 
   echo "Sleeping ${DOWNLOAD_INTERVAL}s until next sync"
   sleep "${DOWNLOAD_INTERVAL}" &

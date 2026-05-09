@@ -32,6 +32,10 @@ folder_structure: "{:%Y/%m/%d}"
 photo_size: "original"
 convert_heic_to_jpeg: true
 delete_heic_after_conversion: true
+downscale_display_images: true
+display_max_width: 1920
+display_max_height: 1080
+display_jpeg_quality: 82
 photo_album: "Favorites"
 photo_library: ""
 skip_album: ""
@@ -51,6 +55,10 @@ download_path: "/media/icloud_photos"
 photo_album: "Favorites"
 convert_heic_to_jpeg: true
 delete_heic_after_conversion: true
+downscale_display_images: true
+display_max_width: 1920
+display_max_height: 1080
+display_jpeg_quality: 82
 skip_videos: false
 skip_live_photos: false
 recent_only: 200
@@ -107,6 +115,8 @@ You do not need to pull the whole library.
 - `skip_videos: false` and `skip_live_photos: false` keeps video files and Live Photo companions for cards that support them.
 - `convert_heic_to_jpeg: true` adds JPEG copies for HEIC/HEIF photos.
 - `delete_heic_after_conversion: true` removes only HEIC/HEIF originals that have a same-folder JPEG/JPG conversion, leaving videos and Live Photo MOV companions controlled by the video options.
+- `downscale_display_images: true` rewrites oversized JPEG/JPG display copies after each sync so they fit within `display_max_width` x `display_max_height`.
+- `display_jpeg_quality: 82` is a good starting point for a 1080p dashboard panel; leave downscaling disabled if `/media/icloud_photos` should keep archive-quality originals.
 
 Important upstream limits:
 
@@ -164,4 +174,10 @@ skip_videos: false
 skip_live_photos: false
 convert_heic_to_jpeg: true
 delete_heic_after_conversion: true
+downscale_display_images: true
+display_max_width: 1920
+display_max_height: 1080
+display_jpeg_quality: 82
 ```
+
+The downscale step only touches JPEG/JPG files larger than the configured bounds and does not downscale videos.

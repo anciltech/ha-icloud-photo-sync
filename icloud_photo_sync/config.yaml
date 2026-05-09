@@ -2,7 +2,7 @@ name: iCloud Photo Sync
 slug: icloud_photo_sync
 description: Sync iCloud Photos into Home Assistant media storage for dashboard playback.
 url: "https://github.com/anciltech/ha-icloud-photo-sync"
-version: "0.1.6"
+version: "0.1.7"
 startup: services
 boot: auto
 init: false
@@ -26,6 +26,10 @@ options:
   photo_size: "original"
   convert_heic_to_jpeg: false
   delete_heic_after_conversion: true
+  downscale_display_images: false
+  display_max_width: 1920
+  display_max_height: 1080
+  display_jpeg_quality: 82
   photo_album: ""
   photo_library: ""
   skip_album: ""
@@ -45,6 +49,10 @@ schema:
   photo_size: str
   convert_heic_to_jpeg: bool
   delete_heic_after_conversion: bool
+  downscale_display_images: bool
+  display_max_width: int
+  display_max_height: int
+  display_jpeg_quality: int
   photo_album: str
   photo_library: str
   skip_album: str
