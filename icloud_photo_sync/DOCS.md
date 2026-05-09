@@ -134,7 +134,7 @@ media-source://media_source/local/icloud_photos
 For the AncilTech `ha-media-card` fork, use:
 
 ```yaml
-type: custom:ha-media-card
+type: custom:media-card
 icloud_photos:
   enabled: true
   media_source_path: media-source://media_source/local/icloud_photos
