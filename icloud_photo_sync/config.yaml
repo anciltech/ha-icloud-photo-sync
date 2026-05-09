@@ -1,0 +1,56 @@
+name: iCloud Photo Sync
+slug: icloud_photo_sync
+description: Sync iCloud Photos into Home Assistant media storage for dashboard playback.
+url: "https://github.com/anciltech/ha-icloud-photo-sync"
+version: "0.1.6"
+startup: services
+boot: auto
+init: false
+stdin: false
+arch:
+  - aarch64
+  - amd64
+  - armv7
+  - armhf
+map:
+  - addon_config:rw
+  - media:rw
+  - share:rw
+options:
+  apple_id: ""
+  timezone: "Europe/Zurich"
+  download_path: "/media/icloud_photos"
+  download_interval: 86400
+  notification_days: 7
+  folder_structure: "{:%Y/%m/%d}"
+  photo_size: "original"
+  convert_heic_to_jpeg: false
+  delete_heic_after_conversion: true
+  photo_album: ""
+  photo_library: ""
+  skip_album: ""
+  skip_library: ""
+  skip_videos: true
+  skip_live_photos: true
+  auto_delete: false
+  recent_only: 0
+  debug_logging: false
+schema:
+  apple_id: str
+  timezone: str
+  download_path: str
+  download_interval: int
+  notification_days: int
+  folder_structure: str
+  photo_size: str
+  convert_heic_to_jpeg: bool
+  delete_heic_after_conversion: bool
+  photo_album: str
+  photo_library: str
+  skip_album: str
+  skip_library: str
+  skip_videos: bool
+  skip_live_photos: bool
+  auto_delete: bool
+  recent_only: int
+  debug_logging: bool
