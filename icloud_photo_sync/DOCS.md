@@ -114,7 +114,7 @@ You do not need to pull the whole library.
 - `skip_live_photos: true` avoids Live Photo companion videos.
 - `skip_videos: false` and `skip_live_photos: false` keeps video files and Live Photo companions for cards that support them.
 - `convert_heic_to_jpeg: true` adds JPEG copies for HEIC/HEIF photos.
-- `delete_heic_after_conversion: true` removes only HEIC/HEIF originals that have a same-folder JPEG/JPG conversion, leaving videos and Live Photo MOV companions controlled by the video options.
+- `delete_heic_after_conversion: true` removes only HEIC/HEIF originals that have a same-folder non-empty JPEG/JPG conversion, leaving videos and Live Photo MOV companions controlled by the video options.
 - `downscale_display_images: true` rewrites oversized JPEG/JPG display copies after each sync so they fit within `display_max_width` x `display_max_height`.
 - `display_jpeg_quality: 82` is a good starting point for a 1080p dashboard panel; leave downscaling disabled if `/media/icloud_photos` should keep archive-quality originals.
 
@@ -180,4 +180,4 @@ display_max_height: 1080
 display_jpeg_quality: 82
 ```
 
-The downscale step only touches JPEG/JPG files larger than the configured bounds and does not downscale videos.
+The downscale step only touches JPEG/JPG files larger than the configured bounds and does not downscale videos. HEIC/HEIF originals are only deleted after a matching non-empty JPEG/JPG exists; empty failed-conversion placeholders are removed so the original can be retried on a later sync.

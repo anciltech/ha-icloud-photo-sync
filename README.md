@@ -24,7 +24,8 @@ This is a Home Assistant add-on repository, so it is installed through the Add-o
 - Downloads selected iCloud Photos content into `/media/icloud_photos`.
 - Supports named albums, shared libraries, recent-only syncs, videos, and Live Photo companions through `icloudpd`.
 - Can convert HEIC/HEIF still images to JPEG.
-- Can delete converted HEIC/HEIF originals after a matching JPEG/JPG exists, while leaving videos controlled by the video options.
+- Can delete converted HEIC/HEIF originals after a matching non-empty JPEG/JPG exists, while leaving videos controlled by the video options.
+- Removes empty failed-conversion JPG placeholders when the original HEIC/HEIF still exists.
 - Can optionally downscale oversized JPEG display copies for 1080p dashboard panels.
 
 ## Pair With A Photo Display Card

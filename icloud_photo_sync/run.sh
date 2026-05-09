@@ -124,12 +124,40 @@ append_if_set "photo_library" "${PHOTO_LIBRARY}"
 append_if_set "skip_album" "${SKIP_ALBUM}"
 append_if_set "skip_library" "${SKIP_LIBRARY}"
 
+cleanup_empty_jpeg_placeholders() {
+  if [ "${CONVERT_HEIC_TO_JPEG}" != "true" ]; then
+    return
+  fi
+
+  echo "Removing empty JPEG placeholders that still have HEIC/HEIF originals under ${DOWNLOAD_PATH}"
+  find "${DOWNLOAD_PATH}" -type f \( -iname '*.jpg' -o -iname '*.jpeg' \) -size 0 -exec sh -c '
+    for jpeg_path do
+      dir="${jpeg_path%/*}"
+      filename="${jpeg_path##*/}"
+      basename="${filename%.*}"
+      original=""
+
+      for extension in HEIC heic HEIF heif; do
+        candidate="${dir}/${basename}.${extension}"
+        if [ -f "${candidate}" ]; then
+          original="${candidate}"
+          break
+        fi
+      done
+
+      if [ -n "${original}" ]; then
+        rm -f "${jpeg_path}" && echo "Removed empty JPEG placeholder: ${jpeg_path}"
+      fi
+    done
+  ' sh {} +
+}
+
 cleanup_converted_heic_originals() {
   if [ "${CONVERT_HEIC_TO_JPEG}" != "true" ] || [ "${DELETE_HEIC_AFTER_CONVERSION}" != "true" ]; then
     return
   fi
 
-  echo "Removing HEIC originals that have matching JPEG conversions under ${DOWNLOAD_PATH}"
+  echo "Removing HEIC originals that have matching non-empty JPEG conversions under ${DOWNLOAD_PATH}"
   find "${DOWNLOAD_PATH}" -type f \( -iname '*.heic' -o -iname '*.heif' \) -exec sh -c '
     for original_path do
       dir="${original_path%/*}"
@@ -139,7 +167,7 @@ cleanup_converted_heic_originals() {
 
       for extension in jpg JPG jpeg JPEG; do
         candidate="${dir}/${basename}.${extension}"
-        if [ -f "${candidate}" ]; then
+        if [ -s "${candidate}" ]; then
           converted="${candidate}"
           break
         fi
@@ -237,6 +265,7 @@ while true; do
   chmod 700 "${TMP_DIR}" >/dev/null 2>&1 || true
 
   /usr/local/bin/sync-icloud.sh || true
+  cleanup_empty_jpeg_placeholders
   cleanup_converted_heic_originals
   downscale_display_images
 
