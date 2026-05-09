@@ -4,7 +4,7 @@ Sync selected iCloud Photos content into Home Assistant media storage for dashbo
 
 This add-on wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk/docker-icloudpd). Apple authentication, MFA cookies, download behavior, album filtering, shared-library support, and re-authentication are provided by `icloudpd`.
 
-## Install
+## First-Run Checklist
 
 1. In Home Assistant, go to `Settings -> Add-ons -> Add-on Store`.
 2. Open the top-right menu and choose `Repositories`.
@@ -15,6 +15,12 @@ This add-on wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk
    ```
 
 4. Install `iCloud Photo Sync`.
+5. Open the add-on options and set at least `apple_id`, `photo_album`, and `download_path`.
+6. Start the add-on once so the container exists.
+7. Complete the interactive Apple authentication from an HAOS terminal.
+8. Restart the add-on and confirm the log shows a successful sync.
+9. Open Home Assistant Media Browser and verify `/media/icloud_photos` contains the synced album.
+10. Point a dashboard media card at `media-source://media_source/local/icloud_photos`.
 
 This is a Home Assistant add-on repository, not a HACS package.
 
@@ -89,6 +95,24 @@ What to expect:
 - It will ask whether to save the password in the keyring.
 - Apple will send or display a 2FA code.
 - After success, the cookie is stored under the add-on `/config` volume and normal sync can proceed.
+
+## After Authentication
+
+1. Restart the add-on.
+2. Open the add-on log and wait for `icloudpd` to finish a sync pass.
+3. In Home Assistant, open Media Browser and browse to `Local Media -> icloud_photos`.
+4. If you configured `photo_album`, confirm that album folder exists below `icloud_photos`.
+5. Use that media-source path in the display card:
+
+   ```text
+   media-source://media_source/local/icloud_photos
+   ```
+
+   For one album folder, append the album name:
+
+   ```text
+   media-source://media_source/local/icloud_photos/Favorites
+   ```
 
 ## Re-Authentication
 
