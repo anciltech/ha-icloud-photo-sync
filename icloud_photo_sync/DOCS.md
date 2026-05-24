@@ -25,6 +25,8 @@ This add-on wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk
 
 This is a Home Assistant add-on repository, not a HACS package.
 
+New installs default HEIC-to-JPEG conversion and display-size JPEG downscaling on. Use `convert_heic_to_jpeg` to turn HEIC conversion on/off, and `downscale_display_images` plus `display_max_width` / `display_max_height` / `display_jpeg_quality` to control the generated JPEG display size.
+
 ## Configure
 
 Typical still-photo display:
@@ -132,10 +134,10 @@ You do not need to pull the whole library.
 - `skip_videos: true` keeps the display library photo-only.
 - `skip_live_photos: true` avoids Live Photo companion videos.
 - `skip_videos: false` and `skip_live_photos: false` keeps video files and Live Photo companions for cards that support them.
-- `convert_heic_to_jpeg: true` adds JPEG copies for HEIC/HEIF photos.
+- `convert_heic_to_jpeg: true` adds JPEG copies for HEIC/HEIF photos. This defaults on for new installs so dashboard browsers do not need to decode HEIC files.
 - After each sync, the wrapper also converts any remaining HEIC/HEIF originals that do not already have a valid JPEG display file. It tries `heif-convert`, ImageMagick, and Pillow HEIF in that order so dashboards do not need browser-side HEIC conversion.
 - `delete_heic_after_conversion: true` removes only HEIC/HEIF originals that have a same-folder non-empty JPEG/JPG conversion, leaving videos and Live Photo MOV companions controlled by the video options.
-- `downscale_display_images: true` rewrites oversized JPEG/JPG display copies after each sync so they fit within `display_max_width` x `display_max_height`.
+- `downscale_display_images: true` rewrites oversized JPEG/JPG display copies after each sync so they fit within `display_max_width` x `display_max_height`. This defaults on for new installs.
 - `display_jpeg_quality: 82` is a good starting point for a 1080p dashboard panel; leave downscaling disabled if `/media/icloud_photos` should keep archive-quality originals.
 
 Important upstream limits:

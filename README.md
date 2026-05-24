@@ -23,6 +23,8 @@ This wraps [`boredazfcuk/docker-icloudpd`](https://github.com/boredazfcuk/docker
 
 This is a Home Assistant add-on repository, so it is installed through the Add-on Store rather than HACS. HACS is still the right path for frontend cards and some integrations.
 
+HEIC-to-JPEG conversion and display-size JPEG downscaling are exposed as normal add-on options. New installs default both features on with a 1920x1080 maximum display size and JPEG quality 82 so dashboard browsers do not need to decode HEIC files.
+
 ## Recommended Display Options
 
 Still-photo dashboard:
@@ -57,11 +59,11 @@ recent_only: 200
 
 - Downloads selected iCloud Photos content into `/media/icloud_photos`.
 - Supports named albums, shared libraries, recent-only syncs, videos, and Live Photo companions through `icloudpd`.
-- Can convert HEIC/HEIF still images to JPEG.
+- Converts HEIC/HEIF still images to JPEG by default; set `convert_heic_to_jpeg: false` to keep originals only.
 - Runs a post-sync HEIC/HEIF conversion pass for any originals that `icloudpd` did not convert, using `heif-convert`, ImageMagick, or Pillow HEIF when available.
 - Can delete converted HEIC/HEIF originals after a matching non-empty JPEG/JPG exists, while leaving videos controlled by the video options.
 - Removes empty failed-conversion JPG placeholders when the original HEIC/HEIF still exists.
-- Can optionally downscale oversized JPEG display copies for 1080p dashboard panels.
+- Downscales oversized JPEG display copies by default to the configured `display_max_width` x `display_max_height`; set `downscale_display_images: false` to preserve full-size JPEGs.
 
 ## Pair With A Photo Display Card
 
