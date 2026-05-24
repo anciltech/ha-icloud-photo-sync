@@ -284,6 +284,21 @@ cleanup_converted_heic_originals() {
   ' sh {} +
 }
 
+valid_jpeg_file() {
+  image_path="$1"
+  if [ ! -s "${image_path}" ]; then
+    return 1
+  fi
+
+  if command -v identify >/dev/null 2>&1 || command -v magick >/dev/null 2>&1; then
+    format="$(imagemagick_identify -format '%m' "${image_path}[0]" 2>/dev/null || true)"
+    [ "${format}" = "JPEG" ] || [ "${format}" = "JPG" ]
+    return $?
+  fi
+
+  return 0
+}
+
 imagemagick_identify() {
   if command -v identify >/dev/null 2>&1; then
     identify "$@"
@@ -302,6 +317,112 @@ imagemagick_convert() {
   else
     return 127
   fi
+}
+
+convert_heic_with_pillow_heif() {
+  original_path="$1"
+  tmp_path="$2"
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 127
+  fi
+
+  python3 - "${original_path}" "${tmp_path}" "${DISPLAY_MAX_WIDTH}" "${DISPLAY_MAX_HEIGHT}" "${DISPLAY_JPEG_QUALITY}" "${DOWNSCALE_DISPLAY_IMAGES}" <<'PY'
+import sys
+
+source, target, max_width, max_height, quality, downscale = sys.argv[1:]
+try:
+    from PIL import Image, ImageOps
+    from pillow_heif import register_heif_opener
+except Exception as exc:
+    print(f"pillow-heif unavailable: {exc}", file=sys.stderr)
+    sys.exit(127)
+
+register_heif_opener()
+try:
+    with Image.open(source) as image:
+        image.load()
+        image = ImageOps.exif_transpose(image)
+        if downscale.lower() == "true":
+            resampling_source = getattr(Image, "Resampling", Image)
+            resampling = getattr(resampling_source, "LANCZOS", 1)
+            image.thumbnail((int(max_width), int(max_height)), resampling)
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+        image.save(target, "JPEG", quality=int(quality), optimize=True)
+except Exception as exc:
+    print(f"pillow-heif conversion failed: {exc}", file=sys.stderr)
+    sys.exit(1)
+PY
+}
+
+convert_one_heic_to_jpeg() {
+  original_path="$1"
+  target_path="$2"
+  tmp_path="${target_path}.heic-convert.$$.jpg"
+
+  rm -f "${tmp_path}" >/dev/null 2>&1 || true
+
+  if command -v heif-convert >/dev/null 2>&1; then
+    if heif-convert -q "${DISPLAY_JPEG_QUALITY}" "${original_path}" "${tmp_path}" >/dev/null 2>&1 && valid_jpeg_file "${tmp_path}"; then
+      return 0
+    fi
+    rm -f "${tmp_path}" >/dev/null 2>&1 || true
+  fi
+
+  if command -v identify >/dev/null 2>&1 || command -v magick >/dev/null 2>&1; then
+    if [ "${DOWNSCALE_DISPLAY_IMAGES}" = "true" ]; then
+      resize_args="-resize ${DISPLAY_MAX_WIDTH}x${DISPLAY_MAX_HEIGHT}>"
+    else
+      resize_args=""
+    fi
+
+    # shellcheck disable=SC2086
+    if imagemagick_convert "${original_path}[0]" -auto-orient ${resize_args} -strip -quality "${DISPLAY_JPEG_QUALITY}" "jpg:${tmp_path}" >/dev/null 2>&1 && valid_jpeg_file "${tmp_path}"; then
+      return 0
+    fi
+    rm -f "${tmp_path}" >/dev/null 2>&1 || true
+  fi
+
+  if convert_heic_with_pillow_heif "${original_path}" "${tmp_path}" >/dev/null 2>&1 && valid_jpeg_file "${tmp_path}"; then
+    return 0
+  fi
+
+  rm -f "${tmp_path}" >/dev/null 2>&1 || true
+  return 1
+}
+
+convert_unconverted_heic_originals() {
+  if [ "${CONVERT_HEIC_TO_JPEG}" != "true" ]; then
+    return
+  fi
+
+  echo "Converting remaining HEIC/HEIF originals under ${DOWNLOAD_PATH} to JPEG display files"
+  find "${DOWNLOAD_PATH}" -type f \( -iname '*.heic' -o -iname '*.heif' \) | while IFS= read -r original_path; do
+    dir="${original_path%/*}"
+    filename="${original_path##*/}"
+    basename="${filename%.*}"
+    target_path="${dir}/${basename}.JPG"
+    tmp_path="${target_path}.heic-convert.$$.jpg"
+
+    if valid_jpeg_file "${target_path}"; then
+      continue
+    fi
+
+    if [ -e "${target_path}" ]; then
+      rm -f "${target_path}" >/dev/null 2>&1 || true
+    fi
+
+    if convert_one_heic_to_jpeg "${original_path}" "${target_path}"; then
+      touch -r "${original_path}" "${tmp_path}" >/dev/null 2>&1 || true
+      chown "${LOCAL_USER}:${LOCAL_GROUP}" "${tmp_path}" >/dev/null 2>&1 || true
+      chmod 644 "${tmp_path}" >/dev/null 2>&1 || true
+      mv "${tmp_path}" "${target_path}"
+      echo "Converted HEIC display image: ${original_path} -> ${target_path}"
+    else
+      echo "Failed to convert HEIC display image: ${original_path}" >&2
+    fi
+  done
 }
 
 downscale_display_images() {
@@ -372,6 +493,7 @@ while true; do
   if auth_ready; then
     /usr/local/bin/sync-icloud.sh || true
     cleanup_empty_jpeg_placeholders
+    convert_unconverted_heic_originals
     cleanup_converted_heic_originals
     downscale_display_images
   else
